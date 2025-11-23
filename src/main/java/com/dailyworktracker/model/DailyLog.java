@@ -5,7 +5,8 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DailyLog {
+public class DailyLog implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private LocalDate date;
     private List<Activity> activities;
     private Activity currentActivity;

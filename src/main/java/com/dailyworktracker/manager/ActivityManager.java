@@ -38,6 +38,10 @@ public class ActivityManager {
         this.currentDailyLog = new DailyLog(LocalDate.now());
     }
 
+    public void setCurrentDailyLog(DailyLog currentDailyLog) {
+        this.currentDailyLog = currentDailyLog;
+    }
+
     public boolean isActivityInProgress() {
         return currentDailyLog.getCurrentActivity() != null;
     }

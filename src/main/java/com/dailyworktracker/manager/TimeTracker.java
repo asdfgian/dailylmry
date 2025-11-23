@@ -55,6 +55,10 @@ public class TimeTracker {
         return elapsedSeconds;
     }
 
+    public void setElapsedSeconds(long elapsedSeconds) {
+        this.elapsedSeconds = elapsedSeconds;
+    }
+
     public boolean isRunning() {
         return isRunning;
     }

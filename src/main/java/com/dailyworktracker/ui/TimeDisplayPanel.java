@@ -34,9 +34,8 @@ public class TimeDisplayPanel extends JPanel {
         timeLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         timeLabel.setForeground(new Color(50, 50, 50));
         add(timeLabel);
-        add(Box.createVerticalStrut(20));
+        add(Box.createVerticalStrut(10));
 
-        setMaximumSize(new Dimension(400, 200));
     }
 
     public void updateTime(String time) {

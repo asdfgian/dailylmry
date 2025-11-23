@@ -1,34 +1,40 @@
 package com.dailyworktracker.ui;
 
 import com.dailyworktracker.manager.ActivityManager;
+import com.dailyworktracker.manager.PersistenceManager;
 import com.dailyworktracker.manager.TimeTracker;
-import com.dailyworktracker.model.Activity;
 import com.dailyworktracker.model.ActivityType;
+import com.dailyworktracker.model.DailyLog;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 public class MainWindow extends JFrame {
     private ActivityManager activityManager;
     private TimeTracker timeTracker;
+    private PersistenceManager persistenceManager;
     private TimeDisplayPanel timeDisplayPanel;
     private ControlPanel controlPanel;
-    private ActivityListPanel activityListPanel;
     private JButton closeDayButton;
 
     public MainWindow() {
         setTitle("Daily Work Tracker");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(400, 600);
+        setSize(400, 325);
         setLocationRelativeTo(null);
         setResizable(false);
 
         this.activityManager = new ActivityManager();
         this.timeTracker = new TimeTracker();
+        this.persistenceManager = new PersistenceManager();
+
+        loadState();
 
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         mainPanel.setBackground(Color.WHITE);
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
 
         timeDisplayPanel = new TimeDisplayPanel();
         mainPanel.add(timeDisplayPanel);
@@ -36,11 +42,6 @@ public class MainWindow extends JFrame {
         controlPanel = new ControlPanel();
         setupControlPanelListeners();
         mainPanel.add(controlPanel);
-
-        mainPanel.add(Box.createVerticalStrut(10));
-
-        activityListPanel = new ActivityListPanel();
-        mainPanel.add(activityListPanel);
 
         mainPanel.add(Box.createVerticalStrut(10));
 
@@ -59,6 +60,15 @@ public class MainWindow extends JFrame {
         mainPanel.add(closeDayButton);
 
         add(mainPanel, BorderLayout.CENTER);
+
+        updateUIFromLoadedState();
+
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                saveState();
+            }
+        });
     }
 
     private void setupControlPanelListeners() {
@@ -81,17 +91,13 @@ public class MainWindow extends JFrame {
 
     private void stopActivity() {
         if (activityManager.isActivityInProgress()) {
-            Activity stoppedActivity = activityManager.getCurrentActivity();
             activityManager.stopCurrentActivity();
-            
+
             controlPanel.setStartEnabled(true);
             controlPanel.setStopEnabled(false);
             timeTracker.stop();
-            timeDisplayPanel.reset();
 
-            if (stoppedActivity != null) {
-                activityListPanel.addActivity(stoppedActivity);
-            }
+            saveState();
         }
     }
 
@@ -99,20 +105,43 @@ public class MainWindow extends JFrame {
         if (activityManager.isActivityInProgress()) {
             stopActivity();
         }
-        
+
         int option = JOptionPane.showConfirmDialog(
-            this,
-            "¿Deseas cerrar el día?\nTotal: " + activityManager.getCurrentDailyLog().getTotalDurationFormatted(),
-            "Close Day",
-            JOptionPane.YES_NO_OPTION
-        );
+                this,
+                "¿Deseas cerrar el día?\nTotal: " + activityManager.getCurrentDailyLog().getTotalDurationFormatted(),
+                "Close Day",
+                JOptionPane.YES_NO_OPTION);
 
         if (option == JOptionPane.YES_OPTION) {
             activityManager.startNewDay();
-            activityListPanel.clearActivities();
             timeDisplayPanel.reset();
             controlPanel.resetState();
             timeTracker.reset();
+            persistenceManager.clearState();
+        }
+    }
+
+    private void saveState() {
+        persistenceManager.saveState(timeTracker, activityManager.getCurrentDailyLog());
+    }
+
+    private void loadState() {
+        Object[] loadedData = persistenceManager.loadState();
+        if (loadedData != null) {
+            long elapsedSeconds = (long) loadedData[0];
+            DailyLog dailyLog = (DailyLog) loadedData[1];
+
+            timeTracker.setElapsedSeconds(elapsedSeconds);
+            activityManager.setCurrentDailyLog(dailyLog);
+        }
+    }
+
+    private void updateUIFromLoadedState() {
+        timeDisplayPanel.updateTime(timeTracker.getFormattedTime());
+        if (activityManager.isActivityInProgress()) {
+            controlPanel.setStartEnabled(false);
+            controlPanel.setStopEnabled(true);
+            timeTracker.start(() -> timeDisplayPanel.updateTime(timeTracker.getFormattedTime()));
         }
     }
 }
