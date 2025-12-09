@@ -59,6 +59,10 @@ public class TimeTracker {
         this.elapsedSeconds = elapsedSeconds;
     }
 
+    public void addElapsedSeconds(long seconds) {
+        this.elapsedSeconds += seconds;
+    }
+
     public boolean isRunning() {
         return isRunning;
     }
@@ -67,3 +71,4 @@ public class TimeTracker {
         return startTime;
     }
 }
+

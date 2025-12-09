@@ -4,11 +4,23 @@ import com.dailyworktracker.manager.ActivityManager;
 import com.dailyworktracker.manager.PersistenceManager;
 import com.dailyworktracker.manager.TimeTracker;
 import com.dailyworktracker.model.ActivityType;
-import com.dailyworktracker.model.DailyLog;
-import javax.swing.*;
-import java.awt.*;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 
 public class MainWindow extends JFrame {
     private ActivityManager activityManager;
@@ -28,8 +40,6 @@ public class MainWindow extends JFrame {
         this.activityManager = new ActivityManager();
         this.timeTracker = new TimeTracker();
         this.persistenceManager = new PersistenceManager();
-
-        loadState();
 
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
@@ -61,7 +71,7 @@ public class MainWindow extends JFrame {
 
         add(mainPanel, BorderLayout.CENTER);
 
-        updateUIFromLoadedState();
+        changeActivityCombo();
 
         addWindowListener(new WindowAdapter() {
             @Override
@@ -74,31 +84,39 @@ public class MainWindow extends JFrame {
     private void setupControlPanelListeners() {
         controlPanel.setStartButtonListener(e -> startActivity());
         controlPanel.setStopButtonListener(e -> stopActivity());
+        controlPanel.setActivityComboListener(e -> changeActivityCombo());
+    }
+
+    private void changeActivityCombo() {
+        if (activityManager.isActivityInProgress()) {
+            stopActivity();
+        }
+
+        ActivityType selectedType = controlPanel.getSelectedActivityType();
+        activityManager.createAndStartActivity(selectedType.getDisplayName(), selectedType);
+
+        long loadedTime = persistenceManager.loadState(selectedType);
+        timeTracker.setElapsedSeconds(loadedTime);
+        timeDisplayPanel.updateTime(timeTracker.getFormattedTime());
     }
 
     private void startActivity() {
-        if (!activityManager.isActivityInProgress()) {
-            ActivityType selectedType = controlPanel.getSelectedActivityType();
-            activityManager.createAndStartActivity(selectedType.getDisplayName(), selectedType);
-            controlPanel.setStartEnabled(false);
-            controlPanel.setStopEnabled(true);
+        controlPanel.setStartEnabled(false);
+        controlPanel.setStopEnabled(true);
 
-            timeTracker.start(() -> {
-                timeDisplayPanel.updateTime(timeTracker.getFormattedTime());
-            });
-        }
+        timeTracker.start(() -> {
+            timeDisplayPanel.updateTime(timeTracker.getFormattedTime());
+        });
     }
 
     private void stopActivity() {
-        if (activityManager.isActivityInProgress()) {
-            activityManager.stopCurrentActivity();
-
-            controlPanel.setStartEnabled(true);
-            controlPanel.setStopEnabled(false);
-            timeTracker.stop();
-
-            saveState();
+        if (!activityManager.isActivityInProgress()) {
+            return;
         }
+        timeTracker.stop();
+        saveState();
+        controlPanel.setStartEnabled(true);
+        controlPanel.setStopEnabled(false);
     }
 
     private void closeDay() {
@@ -106,11 +124,48 @@ public class MainWindow extends JFrame {
             stopActivity();
         }
 
+        long coding = persistenceManager.loadState(ActivityType.CODING);
+        long meeting = persistenceManager.loadState(ActivityType.MEETING);
+        long testing = persistenceManager.loadState(ActivityType.QA_TESTING);
+
+        String table = String.format("""
+                <html>
+                <body style='font-family:Segoe UI, sans-serif; font-size:13px;'>
+
+                <h3>Do you want to end the day?</h3>
+
+                <table border='1' cellpadding='5' cellspacing='0' style='border-collapse:collapse; text-align:center;'>
+                    <tr style='background-color:#e0e0e0; font-weight:bold;'>
+                        <td>Activity</td>
+                        <td>Time</td>
+                    </tr>
+                    <tr>
+                        <td>Coding</td>
+                        <td>%s</td>
+                    </tr>
+                    <tr>
+                        <td>Meeting</td>
+                        <td>%s</td>
+                    </tr>
+                    <tr>
+                        <td>QA Testing</td>
+                        <td>%s</td>
+                    </tr>
+                </table>
+
+                </body>
+                </html>
+                """,
+                formatTime(coding),
+                formatTime(meeting),
+                formatTime(testing));
+
         int option = JOptionPane.showConfirmDialog(
                 this,
-                "¿Deseas cerrar el día?\nTotal: " + activityManager.getCurrentDailyLog().getTotalDurationFormatted(),
+                table,
                 "Close Day",
-                JOptionPane.YES_NO_OPTION);
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.PLAIN_MESSAGE);
 
         if (option == JOptionPane.YES_OPTION) {
             activityManager.startNewDay();
@@ -122,26 +177,18 @@ public class MainWindow extends JFrame {
     }
 
     private void saveState() {
-        persistenceManager.saveState(timeTracker, activityManager.getCurrentDailyLog());
-    }
-
-    private void loadState() {
-        Object[] loadedData = persistenceManager.loadState();
-        if (loadedData != null) {
-            long elapsedSeconds = (long) loadedData[0];
-            DailyLog dailyLog = (DailyLog) loadedData[1];
-
-            timeTracker.setElapsedSeconds(elapsedSeconds);
-            activityManager.setCurrentDailyLog(dailyLog);
+        if (activityManager.getCurrentActivity() != null) {
+            persistenceManager.saveState(
+                    activityManager.getCurrentDailyLog(),
+                    timeTracker);
         }
     }
 
-    private void updateUIFromLoadedState() {
-        timeDisplayPanel.updateTime(timeTracker.getFormattedTime());
-        if (activityManager.isActivityInProgress()) {
-            controlPanel.setStartEnabled(false);
-            controlPanel.setStopEnabled(true);
-            timeTracker.start(() -> timeDisplayPanel.updateTime(timeTracker.getFormattedTime()));
-        }
+    private String formatTime(long seconds) {
+        long h = seconds / 3600;
+        long m = (seconds % 3600) / 60;
+        long s = seconds % 60;
+        return String.format("%02d:%02d:%02d", h, m, s);
     }
+
 }

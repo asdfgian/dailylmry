@@ -21,15 +21,6 @@ public class ActivityManager {
         currentDailyLog.stopCurrentActivity();
     }
 
-    public void addPredefinedActivity(ActivityType type, String customName) {
-        Activity activity = new Activity(customName != null ? customName : type.getDisplayName(), type);
-        currentDailyLog.addActivity(activity);
-    }
-
-    public void removeActivity(Activity activity) {
-        currentDailyLog.removeActivity(activity);
-    }
-
     public DailyLog getCurrentDailyLog() {
         return currentDailyLog;
     }

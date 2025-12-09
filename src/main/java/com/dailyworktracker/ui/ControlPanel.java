@@ -1,9 +1,18 @@
 package com.dailyworktracker.ui;
 
 import com.dailyworktracker.model.ActivityType;
-import javax.swing.*;
-import java.awt.*;
+
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.event.ActionListener;
+
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 
 public class ControlPanel extends JPanel {
     private JButton startButton;
@@ -51,6 +60,10 @@ public class ControlPanel extends JPanel {
 
     public void setStopButtonListener(ActionListener listener) {
         stopButton.addActionListener(listener);
+    }
+
+    public void setActivityComboListener(ActionListener listener) {
+        activityCombo.addActionListener(listener);
     }
 
     public ActivityType getSelectedActivityType() {
